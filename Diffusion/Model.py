@@ -26,7 +26,7 @@ class TimeEmbedding(nn.Module):
         emb = emb.view(T, d_model)
 
         self.timembedding = nn.Sequential(
-            nn.Embedding.from_pretrained(emb),
+            nn.Embedding.from_pretrained(emb),  # 给定2维度weight，创建embedding层num_embeddingsxembedding_dim
             nn.Linear(d_model, dim),
             Swish(),
             nn.Linear(dim, dim),

@@ -12,7 +12,7 @@ def extract(v, t, x_shape):
     [batch_size, 1, 1, 1, 1, ...] for broadcasting purposes.
     """
     device = t.device
-    out = torch.gather(v, index=t, dim=0).float().to(device)
+    out = torch.gather(v, index=t, dim=0).float().to(device)    # 提取第t个分量, t是tensor
     return out.view([t.shape[0]] + [1] * (len(x_shape) - 1))
 
 
@@ -38,16 +38,16 @@ class GaussianDiffusionTrainer(nn.Module):
         """
         Algorithm 1.
         """
-        t = torch.randint(self.T, size=(x_0.shape[0], ), device=x_0.device)
+        t = torch.randint(self.T, size=(x_0.shape[0], ), device=x_0.device) # t是常数
         noise = torch.randn_like(x_0)
         x_t = (
             extract(self.sqrt_alphas_bar, t, x_0.shape) * x_0 +
-            extract(self.sqrt_one_minus_alphas_bar, t, x_0.shape) * noise)
-        loss = F.mse_loss(self.model(x_t, t), noise, reduction='none')
+            extract(self.sqrt_one_minus_alphas_bar, t, x_0.shape) * noise)  # 提取噪声的均值和方差
+        loss = F.mse_loss(self.model(x_t, t), noise, reduction='none')  # 学习均值和方差
         return loss
 
 
-class GaussianDiffusionSampler(nn.Module):
+class GaussianDiffusionSampler(nn.Module):  # 前向采样用，推理用
     def __init__(self, model, beta_1, beta_T, T):
         super().__init__()
 
@@ -65,7 +65,7 @@ class GaussianDiffusionSampler(nn.Module):
         self.register_buffer('posterior_var', self.betas * (1. - alphas_bar_prev) / (1. - alphas_bar))
 
     def predict_xt_prev_mean_from_eps(self, x_t, t, eps):
-        assert x_t.shape == eps.shape
+        assert x_t.shape == eps.shape  # 第t步均值系数-第t步噪声
         return (
             extract(self.coeff1, t, x_t.shape) * x_t -
             extract(self.coeff2, t, x_t.shape) * eps
@@ -73,10 +73,10 @@ class GaussianDiffusionSampler(nn.Module):
 
     def p_mean_variance(self, x_t, t):
         # below: only log_variance is used in the KL computations
-        var = torch.cat([self.posterior_var[1:2], self.betas[1:]])
+        var = torch.cat([self.posterior_var[1:2], self.betas[1:]])  # 预计算方差
         var = extract(var, t, x_t.shape)
 
-        eps = self.model(x_t, t)
+        eps = self.model(x_t, t)    # 预测噪声, UNet都是共享参数的
         xt_prev_mean = self.predict_xt_prev_mean_from_eps(x_t, t, eps=eps)
 
         return xt_prev_mean, var
@@ -88,14 +88,14 @@ class GaussianDiffusionSampler(nn.Module):
         x_t = x_T
         for time_step in reversed(range(self.T)):
             print(time_step)
-            t = x_t.new_ones([x_T.shape[0], ], dtype=torch.long) * time_step
+            t = x_t.new_ones([x_T.shape[0], ], dtype=torch.long) * time_step    # batchsizex1
             mean, var= self.p_mean_variance(x_t=x_t, t=t)
             # no noise when t == 0
             if time_step > 0:
-                noise = torch.randn_like(x_t)
+                noise = torch.randn_like(x_t)   # N(0,1)高斯分布
             else:
                 noise = 0
-            x_t = mean + torch.sqrt(var) * noise
+            x_t = mean + torch.sqrt(var) * noise    # 为什么还要添加噪声？？参考公式中sqrt(beta_t)*e
             assert torch.isnan(x_t).int().sum() == 0, "nan in tensor."
         x_0 = x_t
         return torch.clip(x_0, -1, 1)   

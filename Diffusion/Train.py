@@ -81,11 +81,11 @@ def eval(modelConfig: Dict):
             model, modelConfig["beta_1"], modelConfig["beta_T"], modelConfig["T"]).to(device)
         # Sampled from standard normal distribution
         noisyImage = torch.randn(
-            size=[modelConfig["batch_size"], 3, 32, 32], device=device)
+            size=[modelConfig["batch_size"], 3, 32, 32], device=device)     # 从标准高斯分布采样噪声
         saveNoisy = torch.clamp(noisyImage * 0.5 + 0.5, 0, 1)
         save_image(saveNoisy, os.path.join(
             modelConfig["sampled_dir"], modelConfig["sampledNoisyImgName"]), nrow=modelConfig["nrow"])
-        sampledImgs = sampler(noisyImage)
+        sampledImgs = sampler(noisyImage)   # 前向推理出的干净图像
         sampledImgs = sampledImgs * 0.5 + 0.5  # [0 ~ 1]
         save_image(sampledImgs, os.path.join(
             modelConfig["sampled_dir"],  modelConfig["sampledImgName"]), nrow=modelConfig["nrow"])
