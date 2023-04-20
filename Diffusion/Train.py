@@ -71,7 +71,7 @@ def eval(modelConfig: Dict):
     with torch.no_grad():
         device = torch.device(modelConfig["device"])
         model = UNet(T=modelConfig["T"], ch=modelConfig["channel"], ch_mult=modelConfig["channel_mult"], attn=modelConfig["attn"],
-                     num_res_blocks=modelConfig["num_res_blocks"], dropout=0.)
+                     num_res_blocks=modelConfig["num_res_blocks"], dropout=0.) # T1000, channel128, [1, 2, 3, 4],
         ckpt = torch.load(os.path.join(
             modelConfig["save_weight_dir"], modelConfig["test_load_weight"]), map_location=device)
         model.load_state_dict(ckpt)

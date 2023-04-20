@@ -16,18 +16,18 @@ class TimeEmbedding(nn.Module):
     def __init__(self, T, d_model, dim):
         assert d_model % 2 == 0
         super().__init__()
-        emb = torch.arange(0, d_model, step=2) / d_model * math.log(10000)
-        emb = torch.exp(-emb)
-        pos = torch.arange(T).float()
-        emb = pos[:, None] * emb[None, :]
+        emb = torch.arange(0, d_model, step=2) / d_model * math.log(10000)  # 64维度, 0~1*9.21=0~9.0664
+        emb = torch.exp(-emb)   # [1~1.1548e-04]从大到小
+        pos = torch.arange(T).float()   # 0~999
+        emb = pos[:, None] * emb[None, :]   # 维度1000x64，左大右小、上小下大
         assert list(emb.shape) == [T, d_model // 2]
-        emb = torch.stack([torch.sin(emb), torch.cos(emb)], dim=-1)
+        emb = torch.stack([torch.sin(emb), torch.cos(emb)], dim=-1) # 1000x64x2
         assert list(emb.shape) == [T, d_model // 2, 2]
-        emb = emb.view(T, d_model)
+        emb = emb.view(T, d_model)  # 1000x128
 
         self.timembedding = nn.Sequential(
-            nn.Embedding.from_pretrained(emb),  # 给定2维度weight，创建embedding层num_embeddingsxembedding_dim
-            nn.Linear(d_model, dim),
+            nn.Embedding.from_pretrained(emb),  # 给定2维度weight，1000x128，来一个t取出第t个
+            nn.Linear(d_model, dim),    # 128->512
             Swish(),
             nn.Linear(dim, dim),
         )
@@ -165,7 +165,7 @@ class UNet(nn.Module):
         super().__init__()
         assert all([i < len(ch_mult) for i in attn]), 'attn index out of bound'
         tdim = ch * 4
-        self.time_embedding = TimeEmbedding(T, ch, tdim)
+        self.time_embedding = TimeEmbedding(T, ch, tdim)    # T1000, ch128, tdim=512
 
         self.head = nn.Conv2d(3, ch, kernel_size=3, stride=1, padding=1)
         self.downblocks = nn.ModuleList()
